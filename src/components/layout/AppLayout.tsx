@@ -1,9 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
+    ArrowDownUp,
     Eye,
     EyeOff,
+    Heart,
     ListMusic,
     Lock,
     Music2,
@@ -17,6 +19,7 @@ import {
     User,
 } from "lucide-react";
 import AuthControls from "@/components/auth/AuthControls";
+import AuthPromptButton from "@/components/auth/AuthPromptButton";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/services/audio.service";
 import { WebMusicService } from "@/services/web-music.service";
@@ -42,6 +45,21 @@ const themeOptions = [
     { value: "sunset", label: "Sunset" },
 ] as const;
 
+type SortKey = "title" | "globalRank" | "plays" | "duration";
+type SortDirection = "asc" | "desc";
+
+const sortOptions: Array<{ value: SortKey; label: string }> = [
+    { value: "title", label: "Name" },
+    { value: "globalRank", label: "Global Rank" },
+    { value: "plays", label: "Times Played" },
+    { value: "duration", label: "Time Length" },
+];
+
+const VIRTUAL_ROW_HEIGHT = 82;
+const VIRTUAL_LIST_HEIGHT = 620;
+const VIRTUAL_OVERSCAN = 6;
+const GUEST_PREVIEW_LIMIT = 12;
+
 const AppLayout = () => {
     const {
         songs,
@@ -66,6 +84,7 @@ const AppLayout = () => {
         setTheme,
         setMood,
         toggleLyrics,
+        toggleLike,
         dismissActionMessage,
         createPlaylist,
         togglePlaylistVisibility,
@@ -74,12 +93,50 @@ const AppLayout = () => {
     } = usePlayerStore();
     const [playlistName, setPlaylistName] = useState("");
     const [playlistPublic, setPlaylistPublic] = useState(true);
+    const [sortKey, setSortKey] = useState<SortKey>("globalRank");
+    const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+    const [catalogScrollTop, setCatalogScrollTop] = useState(0);
+    const catalogViewportRef = useRef<HTMLDivElement>(null);
 
     const currentSong = songs.find((song) => song.id === currentSongId) ?? songs[0];
-    const filteredSongs = mood === "all" ? songs : songs.filter((song) => song.mood === mood);
+    const filteredSongs = useMemo(
+        () => (mood === "all" ? songs : songs.filter((song) => song.mood === mood)),
+        [mood, songs],
+    );
+    const sortedSongs = useMemo(() => {
+        const direction = sortDirection === "asc" ? 1 : -1;
+
+        return [...filteredSongs].sort((first, second) => {
+            let comparison = 0;
+
+            if (sortKey === "title") {
+                comparison = first.title.localeCompare(second.title);
+            } else if (sortKey === "globalRank") {
+                comparison = first.globalRank - second.globalRank;
+            } else if (sortKey === "plays") {
+                comparison = first.plays - second.plays;
+            } else {
+                comparison = first.duration - second.duration;
+            }
+
+            const fallback = first.globalRank - second.globalRank || first.title.localeCompare(second.title);
+
+            return (comparison || fallback) * direction;
+        });
+    }, [filteredSongs, sortDirection, sortKey]);
     const visiblePlaylists = playlists.filter((playlist) => playlist.isPublic || playlist.ownerId === user?.id);
     const ownPlaylists = playlists.filter((playlist) => playlist.ownerId === user?.id);
-    const queue = filteredSongs.map((song) => song.id);
+    const catalogUnlocked = Boolean(user);
+    const catalogSongs = catalogUnlocked ? sortedSongs : sortedSongs.slice(0, GUEST_PREVIEW_LIMIT);
+    const catalogLocked = !catalogUnlocked && sortedSongs.length > catalogSongs.length;
+    const lockedSongCount = Math.max(0, sortedSongs.length - catalogSongs.length);
+    const catalogContentHeight = catalogSongs.length * VIRTUAL_ROW_HEIGHT;
+    const catalogSpacerHeight = catalogContentHeight + (catalogLocked ? 190 : 0);
+    const queue = catalogSongs.map((song) => song.id);
+    const virtualStartIndex = Math.max(0, Math.floor(catalogScrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_OVERSCAN);
+    const virtualVisibleCount = Math.ceil(VIRTUAL_LIST_HEIGHT / VIRTUAL_ROW_HEIGHT) + VIRTUAL_OVERSCAN * 2;
+    const virtualEndIndex = Math.min(catalogSongs.length, virtualStartIndex + virtualVisibleCount);
+    const visibleCatalogSongs = catalogSongs.slice(virtualStartIndex, virtualEndIndex);
 
     const appClassName = useMemo(() => {
         const themeClass = {
@@ -101,7 +158,7 @@ const AppLayout = () => {
         startWebSongsLoad();
 
         try {
-            const webSongs = await WebMusicService.getAudiusTrending(12);
+            const webSongs = await WebMusicService.getAudiusTrending(500);
 
             if (!webSongs.length) {
                 throw new Error("Audius returned no tracks.");
@@ -143,6 +200,29 @@ const AppLayout = () => {
         event.preventDefault();
         createPlaylist(playlistName, playlistPublic);
         setPlaylistName("");
+    };
+
+    const resetCatalogScroll = () => {
+        setCatalogScrollTop(0);
+
+        if (catalogViewportRef.current) {
+            catalogViewportRef.current.scrollTop = 0;
+        }
+    };
+
+    const handleMoodChange = (nextMood: SongMood | "all") => {
+        setMood(nextMood);
+        resetCatalogScroll();
+    };
+
+    const handleSortChange = (nextSortKey: SortKey) => {
+        setSortKey(nextSortKey);
+        resetCatalogScroll();
+    };
+
+    const toggleSortDirection = () => {
+        setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
+        resetCatalogScroll();
     };
 
     return (
@@ -207,7 +287,7 @@ const AppLayout = () => {
                         Free API
                     </div>
                     <div className="auth-panel">
-                        <p>{webSongsError || (isLoadingWebSongs ? "Loading Audius songs..." : "Streaming from Audius")}</p>
+                        <p>{webSongsError || (isLoadingWebSongs ? "Loading 500 Audius songs..." : "Streaming 500 songs from Audius")}</p>
                         <Button type="button" variant="secondary" onClick={() => void loadFreeSongs()} disabled={isLoadingWebSongs}>
                             <Radio />
                             {isLoadingWebSongs ? "Loading" : "Reload songs"}
@@ -256,43 +336,101 @@ const AppLayout = () => {
                         <div className="section-heading">
                             <div>
                                 <p className="eyebrow">Discover</p>
-                                <h2>Change Mood</h2>
+                                <h2>Catalog</h2>
+                                <p className="muted-copy">
+                                    {catalogUnlocked
+                                        ? `${sortedSongs.length.toLocaleString()} songs`
+                                        : `${catalogSongs.length.toLocaleString()} preview songs`}
+                                </p>
                             </div>
-                            <div className="mood-row">
-                                {moodOptions.map((option) => (
-                                    <button
-                                        key={option.value}
-                                        type="button"
-                                        className={mood === option.value ? "active" : ""}
-                                        onClick={() => setMood(option.value)}
-                                    >
-                                        {option.label}
-                                    </button>
-                                ))}
+                            <div className="catalog-toolbar">
+                                <div className="mood-row">
+                                    {moodOptions.map((option) => (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            className={mood === option.value ? "active" : ""}
+                                            onClick={() => handleMoodChange(option.value)}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <label className="sort-control">
+                                    <span>Sort</span>
+                                    <select value={sortKey} onChange={(event) => handleSortChange(event.target.value as SortKey)}>
+                                        {sortOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <button
+                                    type="button"
+                                    className="sort-direction"
+                                    onClick={toggleSortDirection}
+                                    aria-label={`Sort ${sortDirection === "asc" ? "descending" : "ascending"}`}
+                                    title={`Sort ${sortDirection === "asc" ? "descending" : "ascending"}`}
+                                >
+                                    <ArrowDownUp />
+                                    {sortDirection === "asc" ? "Asc" : "Desc"}
+                                </button>
                             </div>
                         </div>
 
-                        <div className="song-list">
-                            {filteredSongs.map((song, index) => (
-                                <SongRow
-                                    key={song.id}
-                                    song={song}
-                                    index={index}
-                                    active={song.id === currentSong.id}
-                                    playing={song.id === currentSong.id && isPlaying}
-                                    onPlay={() => {
-                                        if (song.id === currentSong.id && isPlaying) {
-                                            pause();
-                                            return;
-                                        }
+                        <div
+                            ref={catalogViewportRef}
+                            className="song-list-viewport"
+                            onScroll={(event) => setCatalogScrollTop(event.currentTarget.scrollTop)}
+                        >
+                            <div className="song-list-spacer" style={{ height: catalogSpacerHeight }}>
+                                {visibleCatalogSongs.map((song, visibleIndex) => {
+                                    const index = virtualStartIndex + visibleIndex;
 
-                                        playSong(song.id, queue);
-                                    }}
-                                    playlists={ownPlaylists}
-                                    onAdd={addSongToPlaylist}
-                                    userSignedIn={Boolean(user)}
-                                />
-                            ))}
+                                    return (
+                                        <div
+                                            key={song.id}
+                                            className="virtual-song-row"
+                                            style={{ transform: `translateY(${index * VIRTUAL_ROW_HEIGHT}px)` }}
+                                        >
+                                            <SongRow
+                                                song={song}
+                                                index={index}
+                                                active={song.id === currentSong.id}
+                                                playing={song.id === currentSong.id && isPlaying}
+                                                onPlay={() => {
+                                                    if (song.id === currentSong.id && isPlaying) {
+                                                        pause();
+                                                        return;
+                                                    }
+
+                                                    playSong(song.id, queue);
+                                                }}
+                                                onToggleLike={() => toggleLike(song.id)}
+                                                playlists={ownPlaylists}
+                                                onAdd={addSongToPlaylist}
+                                                userSignedIn={Boolean(user)}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                                {catalogLocked && (
+                                    <div
+                                        className="catalog-auth-mask"
+                                        style={{ transform: `translateY(${Math.max(0, catalogContentHeight - 72)}px)` }}
+                                    >
+                                        <div>
+                                            <p className="eyebrow">Members only</p>
+                                            <h3>Sign in to unlock the full catalog</h3>
+                                            <p>
+                                                {lockedSongCount.toLocaleString()} more songs are waiting behind your library pass.
+                                            </p>
+                                        </div>
+                                        <AuthPromptButton />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </section>
 
@@ -404,7 +542,8 @@ const AppLayout = () => {
                                                             onClick={() => playSong(song.id, playlist.songIds)}
                                                         >
                                                             <Play />
-                                                            {song.title}
+                                                            <SongCover song={song} className="playlist-song-cover" />
+                                                            <span>{song.title}</span>
                                                         </button>
                                                         {owned && (
                                                             <button
@@ -445,14 +584,24 @@ interface SongRowProps {
     active: boolean;
     playing: boolean;
     onPlay: () => void;
+    onToggleLike: () => void;
     playlists: Playlist[];
     onAdd: (playlistId: string, songId: string) => void;
     userSignedIn: boolean;
 }
 
-const SongRow = ({ song, index, active, playing, onPlay, playlists, onAdd, userSignedIn }: SongRowProps) => {
+const SongRow = ({ song, index, active, playing, onPlay, onToggleLike, playlists, onAdd, userSignedIn }: SongRowProps) => {
     return (
         <article className={`song-row ${active ? "active" : ""}`}>
+            <button
+                type="button"
+                className={`like-button ${song.liked ? "liked" : ""}`}
+                onClick={onToggleLike}
+                aria-label={`${song.liked ? "Unlike" : "Like"} ${song.title}`}
+                title={song.liked ? "Unlike" : "Like"}
+            >
+                <Heart fill={song.liked ? "currentColor" : "none"} />
+            </button>
             <button type="button" className="song-play" onClick={onPlay} aria-label={`${playing ? "Pause" : "Play"} ${song.title}`}>
                 {playing ? <Pause /> : <Play />}
                 <span>{playing ? "Pause" : "Play"}</span>
@@ -462,9 +611,10 @@ const SongRow = ({ song, index, active, playing, onPlay, playlists, onAdd, userS
                 <h3>{song.title}</h3>
                 <p>{song.artist.name}</p>
             </div>
+            <span className="song-rank">#{song.globalRank.toLocaleString()}</span>
             <span className="song-mood">{song.mood}</span>
-            <span>{formatDuration(song.duration)}</span>
-            <span>{song.plays.toLocaleString()} plays</span>
+            <span className="song-duration">{formatDuration(song.duration)}</span>
+            <span className="song-plays">{song.plays.toLocaleString()} plays</span>
             <select
                 aria-label={`Add ${song.title} to playlist`}
                 defaultValue=""

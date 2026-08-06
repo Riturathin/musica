@@ -14,7 +14,7 @@ const FreeSongsLoader = () => {
             startWebSongsLoad();
 
             try {
-                const webSongs = await WebMusicService.getAudiusTrending(12);
+                const webSongs = await WebMusicService.getAudiusTrending(500);
 
                 if (!webSongs.length) {
                     throw new Error("Audius returned no tracks.");

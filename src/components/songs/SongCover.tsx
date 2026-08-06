@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Audius artwork can come from dynamic mirror hosts. */
+
 import { useState } from "react";
 import { Music2 } from "lucide-react";
 import { cn } from "@/lib/utils";

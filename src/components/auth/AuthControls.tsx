@@ -1,40 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getProviders, signIn, signOut, useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { signOut, useSession } from "next-auth/react";
 import { LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/store/player.store";
-
-const OIDC_PROVIDER_ID = "oidc";
+import { DEV_PROVIDER_ID, OIDC_PROVIDER_ID, signInWithProvider, usePreferredAuthProvider } from "./auth-provider";
 
 const AuthControls = () => {
     const { data: session, status } = useSession();
     const setAuthenticatedUser = usePlayerStore((state) => state.setAuthenticatedUser);
-    const [oidcAvailable, setOidcAvailable] = useState<boolean | null>(null);
+    const { providerId, providersLoaded } = usePreferredAuthProvider();
 
     const isAuthenticated = status === "authenticated";
     const displayName = session?.user?.name ?? session?.user?.email ?? "OIDC User";
-
-    useEffect(() => {
-        let active = true;
-
-        getProviders()
-            .then((providers) => {
-                if (active) {
-                    setOidcAvailable(Boolean(providers?.[OIDC_PROVIDER_ID]));
-                }
-            })
-            .catch(() => {
-                if (active) {
-                    setOidcAvailable(false);
-                }
-            });
-
-        return () => {
-            active = false;
-        };
-    }, []);
 
     useEffect(() => {
         if (status === "authenticated" && session.user) {
@@ -56,8 +35,8 @@ const AuthControls = () => {
             return;
         }
 
-        if (oidcAvailable) {
-            void signIn(OIDC_PROVIDER_ID, { redirectTo: "/" });
+        if (providerId) {
+            signInWithProvider(providerId);
         }
     };
 
@@ -65,14 +44,20 @@ const AuthControls = () => {
         ? "Checking session..."
         : isAuthenticated
             ? `Signed in as ${displayName}`
-            : oidcAvailable === false
-                ? "OIDC env not configured"
+            : providerId === DEV_PROVIDER_ID
+                ? "OIDC not configured. Local demo auth ready."
+                : providersLoaded
+                    ? "OIDC env not configured"
                 : "Browsing as guest";
 
     const buttonLabel = isAuthenticated
         ? "Sign out"
-        : oidcAvailable === false
-            ? "Configure OIDC"
+        : providerId === OIDC_PROVIDER_ID
+            ? "Sign in with OIDC"
+            : providerId === DEV_PROVIDER_ID
+                ? "Demo sign in"
+                : providersLoaded
+                    ? "Configure OIDC"
             : "Sign in with OIDC";
 
     return (
@@ -82,7 +67,7 @@ const AuthControls = () => {
                 type="button"
                 variant="secondary"
                 onClick={handleAuthClick}
-                disabled={status === "loading" || (!isAuthenticated && oidcAvailable !== true)}
+                disabled={status === "loading" || (!isAuthenticated && !providerId)}
             >
                 {isAuthenticated ? <LogOut /> : <LogIn />}
                 {buttonLabel}

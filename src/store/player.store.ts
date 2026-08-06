@@ -46,6 +46,7 @@ interface PlayerState {
     setTheme: (theme: ThemeMode) => void;
     setMood: (mood: SongMood | "all") => void;
     toggleLyrics: () => void;
+    toggleLike: (songId: string) => void;
     dismissActionMessage: () => void;
     setAuthenticatedUser: (user: User | null) => void;
     createPlaylist: (name: string, isPublic: boolean) => void;
@@ -201,12 +202,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     user: null,
     playlists: demoPlaylists,
     startWebSongsLoad: () => {
-        set({ isLoadingWebSongs: true, webSongsError: "", ...announce("Loading free songs from Audius") });
+        set({ isLoadingWebSongs: true, webSongsError: "", ...announce("Loading 500 free songs from Audius") });
     },
     applyWebSongs: (webSongs) =>
         set((state) => {
-            const localSongs = state.songs.filter((song) => !song.id.startsWith("audius-"));
-            const nextSongs = [...webSongs, ...localSongs];
+            const likedSongIds = new Set(state.songs.filter((song) => song.liked).map((song) => song.id));
+            const nextWebSongs = webSongs.map((song) => ({
+                ...song,
+                liked: song.liked || likedSongIds.has(song.id),
+            }));
+            const localSongs = state.songs
+                .filter((song) => !song.id.startsWith("audius-"))
+                .map((song, index) => ({
+                    ...song,
+                    globalRank: nextWebSongs.length + index + 1,
+                }));
+            const nextSongs = [...nextWebSongs, ...localSongs];
 
             return {
                 songs: nextSongs,
@@ -370,6 +381,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
         });
     },
     toggleLyrics: () => set((state) => ({ lyricsOpen: !state.lyricsOpen, ...announce(!state.lyricsOpen ? "Lyrics opened" : "Lyrics hidden") })),
+    toggleLike: (songId) =>
+        set((state) => {
+            const song = state.songs.find((item) => item.id === songId);
+
+            return {
+                songs: state.songs.map((item) =>
+                    item.id === songId ? { ...item, liked: !item.liked } : item,
+                ),
+                ...announce(song?.liked ? "Removed from liked songs" : "Added to liked songs"),
+            };
+        }),
     dismissActionMessage: () => set({ actionMessage: "" }),
     setAuthenticatedUser: (user) =>
         set((state) => {

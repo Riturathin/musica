@@ -1,13 +1,16 @@
 import NextAuth, { type NextAuthConfig, type Profile } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import type { OIDCConfig } from "next-auth/providers";
 
 const OIDC_PROVIDER_ID = "oidc";
+const DEV_PROVIDER_ID = "credentials";
 
 const oidcProviderConfigured = Boolean(
     process.env.OIDC_ISSUER &&
     process.env.OIDC_CLIENT_ID &&
     process.env.OIDC_CLIENT_SECRET,
 );
+const devAuthEnabled = process.env.NODE_ENV !== "production" || process.env.DEV_AUTH_ENABLED === "true";
 
 const createOidcProvider = (): OIDCConfig<Profile> => ({
     id: OIDC_PROVIDER_ID,
@@ -36,13 +39,50 @@ const createOidcProvider = (): OIDCConfig<Profile> => ({
     },
 });
 
+const createDevProvider = () =>
+    Credentials({
+        id: DEV_PROVIDER_ID,
+        name: "Local Demo",
+        credentials: {
+            name: { label: "Name", type: "text" },
+            email: { label: "Email", type: "email" },
+        },
+        authorize(credentials) {
+            const email = typeof credentials.email === "string" && credentials.email.trim()
+                ? credentials.email.trim()
+                : "demo@musica.local";
+            const name = typeof credentials.name === "string" && credentials.name.trim()
+                ? credentials.name.trim()
+                : "Demo Listener";
+
+            return {
+                id: `dev-${email.toLowerCase()}`,
+                name,
+                email,
+                image: null,
+            };
+        },
+    });
+
+const providers = [
+    ...(oidcProviderConfigured ? [createOidcProvider()] : []),
+    ...(devAuthEnabled ? [createDevProvider()] : []),
+];
+
 export const authConfig = {
     trustHost: true,
     session: {
         strategy: "jwt",
     },
-    providers: oidcProviderConfigured ? [createOidcProvider()] : [],
+    providers,
     callbacks: {
+        jwt({ token, user }) {
+            if (user?.id) {
+                token.sub = user.id;
+            }
+
+            return token;
+        },
         session({ session, token }) {
             if (session.user) {
                 session.user.id = token.sub ?? session.user.id;

@@ -15,6 +15,7 @@ export interface Song {
     audioUrl: string;
 
     plays: number;
+    globalRank: number;
 
     liked: boolean;
 

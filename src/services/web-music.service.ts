@@ -53,7 +53,7 @@ const getArtworkUrl = (artwork?: Artwork) => {
 };
 
 export const WebMusicService = {
-    async getAudiusTrending(limit = 12): Promise<Song[]> {
+    async getAudiusTrending(limit = 500): Promise<Song[]> {
         const response = await fetch(`/api/music/audius/trending?limit=${limit}`, {
             cache: "no-store",
             headers: {
@@ -67,7 +67,7 @@ export const WebMusicService = {
 
         const payload = (await response.json()) as AudiusTracksResponse;
 
-        return (payload.data ?? []).map((track) => {
+        return (payload.data ?? []).map((track, index) => {
             const artistName = track.user?.name ?? track.user?.handle ?? "Audius Artist";
             const mood = inferMood(track);
             const artworkUrl = getArtworkUrl(track.artwork);
@@ -90,6 +90,7 @@ export const WebMusicService = {
                 imageUrl: artworkUrl,
                 audioUrl: `/api/audio/audius/${encodeURIComponent(track.id)}`,
                 plays: track.play_count ?? 0,
+                globalRank: index + 1,
                 liked: false,
                 mood,
                 lyrics: [

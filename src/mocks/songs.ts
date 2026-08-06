@@ -19,6 +19,7 @@ const songs: Song[] = [
         imageUrl: "/covers/neon-pulse.svg",
         audioUrl: "",
         plays: 182456,
+        globalRank: 3,
         liked: false,
         mood: "energy",
         lyrics: [
@@ -47,6 +48,7 @@ const songs: Song[] = [
         imageUrl: "/covers/slow-rain.svg",
         audioUrl: "",
         plays: 94320,
+        globalRank: 6,
         liked: true,
         mood: "chill",
         lyrics: [
@@ -75,6 +77,7 @@ const songs: Song[] = [
         imageUrl: "/covers/golden-hour-drive.svg",
         audioUrl: "",
         plays: 210775,
+        globalRank: 2,
         liked: false,
         mood: "happy",
         lyrics: [
@@ -103,6 +106,7 @@ const songs: Song[] = [
         imageUrl: "/covers/deep-work.svg",
         audioUrl: "",
         plays: 151009,
+        globalRank: 4,
         liked: true,
         mood: "focus",
         lyrics: [
@@ -131,6 +135,7 @@ const songs: Song[] = [
         imageUrl: "/covers/velvet-promise.svg",
         audioUrl: "",
         plays: 132804,
+        globalRank: 5,
         liked: false,
         mood: "romance",
         lyrics: [
@@ -159,6 +164,7 @@ const songs: Song[] = [
         imageUrl: "/covers/lift-off.svg",
         audioUrl: "",
         plays: 288105,
+        globalRank: 1,
         liked: false,
         mood: "energy",
         lyrics: [
