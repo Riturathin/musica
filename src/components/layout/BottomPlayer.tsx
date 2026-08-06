@@ -97,6 +97,7 @@ const BottomPlayer = () => {
                         type="range"
                         min="0"
                         max={currentSong?.duration ?? 0}
+                        step="0.1"
                         value={progress}
                         onChange={(event) => seek(Number(event.target.value))}
                         aria-label="Song progress"

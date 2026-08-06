@@ -10,6 +10,7 @@ import {
     LogOut,
     Music2,
     Palette,
+    Pause,
     Play,
     Plus,
     Radio,
@@ -19,6 +20,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/services/audio.service";
+import { WebMusicService } from "@/services/web-music.service";
+import FreeSongsLoader from "@/components/songs/FreeSongsLoader";
 import { usePlayerStore } from "@/store/player.store";
 import { Playlist } from "@/types/playlist";
 import { Song, SongMood } from "@/types/song";
@@ -34,7 +37,7 @@ const moodOptions: Array<{ value: SongMood | "all"; label: string }> = [
 ];
 
 const themeOptions = [
-    { value: "midnight", label: "Midnight" },
+    { value: "midnight", label: "Purple Blue" },
     { value: "light", label: "Light" },
     { value: "sunset", label: "Sunset" },
 ] as const;
@@ -53,16 +56,26 @@ const AppLayout = () => {
         songs,
         currentSongId,
         isPlaying,
+        progress,
         theme,
         mood,
         lyricsOpen,
+        actionMessage,
+        isLoadingWebSongs,
+        webSongsError,
         user,
         playlists,
+        startWebSongsLoad,
+        applyWebSongs,
+        failWebSongsLoad,
         playSong,
+        pause,
+        resume,
         tick,
         setTheme,
         setMood,
         toggleLyrics,
+        dismissActionMessage,
         signIn,
         signOut,
         createPlaylist,
@@ -95,6 +108,48 @@ const AppLayout = () => {
         return () => window.clearInterval(interval);
     }, [tick]);
 
+    const loadFreeSongs = async () => {
+        startWebSongsLoad();
+
+        try {
+            const webSongs = await WebMusicService.getAudiusTrending(12);
+
+            if (!webSongs.length) {
+                throw new Error("Audius returned no tracks.");
+            }
+
+            applyWebSongs(webSongs);
+        } catch (error) {
+            failWebSongsLoad(error instanceof Error ? error.message : "Could not load free songs.");
+        }
+    };
+
+    useEffect(() => {
+        if (!actionMessage) {
+            return;
+        }
+
+        const timeout = window.setTimeout(() => dismissActionMessage(), 2400);
+
+        return () => window.clearTimeout(timeout);
+    }, [actionMessage, dismissActionMessage]);
+
+    const handleCurrentPlayback = () => {
+        if (isPlaying) {
+            pause();
+            return;
+        }
+
+        if (progress === 0) {
+            playSong(currentSong.id, queue);
+            return;
+        }
+
+        resume();
+    };
+
+    const currentPlaybackLabel = isPlaying ? "Pause" : progress > 0 ? "Resume" : "Play";
+
     const handleCreatePlaylist = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         createPlaylist(playlistName, playlistPublic);
@@ -103,6 +158,7 @@ const AppLayout = () => {
 
     return (
         <div className={appClassName}>
+            <FreeSongsLoader />
             <aside className="music-sidebar">
                 <div className="brand-lockup">
                     <div className="brand-mark">
@@ -161,6 +217,20 @@ const AppLayout = () => {
                         </Button>
                     </div>
                 </section>
+
+                <section className="side-section">
+                    <div className="section-label">
+                        <Radio />
+                        Free API
+                    </div>
+                    <div className="auth-panel">
+                        <p>{webSongsError || (isLoadingWebSongs ? "Loading Audius songs..." : "Streaming from Audius")}</p>
+                        <Button type="button" variant="secondary" onClick={() => void loadFreeSongs()} disabled={isLoadingWebSongs}>
+                            <Radio />
+                            {isLoadingWebSongs ? "Loading" : "Reload songs"}
+                        </Button>
+                    </div>
+                </section>
             </aside>
 
             <div className="music-shell">
@@ -170,9 +240,9 @@ const AppLayout = () => {
                         <h2>{currentSong.title}</h2>
                         <p>{currentSong.artist.name} - {currentSong.album?.title}</p>
                     </div>
-                    <Button type="button" onClick={() => playSong(currentSong.id, queue)}>
-                        <Play />
-                        {isPlaying ? "Playing" : "Play"}
+                    <Button type="button" onClick={handleCurrentPlayback}>
+                        {isPlaying ? <Pause /> : <Play />}
+                        {currentPlaybackLabel}
                     </Button>
                 </header>
 
@@ -187,9 +257,9 @@ const AppLayout = () => {
                                 immersive listening.
                             </p>
                             <div className="hero-actions">
-                                <Button type="button" onClick={() => playSong(currentSong.id, queue)}>
-                                    <Play />
-                                    Play
+                                <Button type="button" onClick={handleCurrentPlayback}>
+                                    {isPlaying ? <Pause /> : <Play />}
+                                    {currentPlaybackLabel}
                                 </Button>
                                 <Button type="button" variant="secondary" onClick={toggleLyrics}>
                                     {lyricsOpen ? <EyeOff /> : <Eye />}
@@ -226,7 +296,15 @@ const AppLayout = () => {
                                     song={song}
                                     index={index}
                                     active={song.id === currentSong.id}
-                                    onPlay={() => playSong(song.id, queue)}
+                                    playing={song.id === currentSong.id && isPlaying}
+                                    onPlay={() => {
+                                        if (song.id === currentSong.id && isPlaying) {
+                                            pause();
+                                            return;
+                                        }
+
+                                        playSong(song.id, queue);
+                                    }}
                                     playlists={ownPlaylists}
                                     onAdd={addSongToPlaylist}
                                     userSignedIn={Boolean(user)}
@@ -312,6 +390,16 @@ const AppLayout = () => {
                                                 {playlist.isPublic ? "Public" : "Private"}
                                             </span>
                                         </div>
+                                        <div className="playlist-actions">
+                                            {playlistSongs.length > 0 && (
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => playSong(playlistSongs[0].id, playlist.songIds)}
+                                                >
+                                                    <Play />
+                                                    Play playlist
+                                                </Button>
+                                            )}
                                         {owned && (
                                             <Button
                                                 type="button"
@@ -322,11 +410,19 @@ const AppLayout = () => {
                                                 Make {playlist.isPublic ? "private" : "public"}
                                             </Button>
                                         )}
+                                        </div>
                                         <div className="playlist-songs">
                                             {playlistSongs.length ? (
                                                 playlistSongs.map((song) => (
                                                     <div key={song.id} className="playlist-song-row">
-                                                        <span>{song.title}</span>
+                                                        <button
+                                                            type="button"
+                                                            className="playlist-track-button"
+                                                            onClick={() => playSong(song.id, playlist.songIds)}
+                                                        >
+                                                            <Play />
+                                                            {song.title}
+                                                        </button>
                                                         {owned && (
                                                             <button
                                                                 type="button"
@@ -351,6 +447,11 @@ const AppLayout = () => {
             </div>
 
             <BottomPlayer />
+            {actionMessage && (
+                <button type="button" className="action-toast" onClick={dismissActionMessage}>
+                    {actionMessage}
+                </button>
+            )}
         </div>
     );
 };
@@ -361,7 +462,7 @@ interface ArtworkProps {
 }
 
 const Artwork = ({ song, size = "compact" }: ArtworkProps) => {
-    const index = Number(song.id) - 1;
+    const index = [...song.id].reduce((total, character) => total + character.charCodeAt(0), 0);
 
     return (
         <div className={`artwork ${size} bg-gradient-to-br ${artworkClassNames[index % artworkClassNames.length]}`}>
@@ -374,17 +475,19 @@ interface SongRowProps {
     song: Song;
     index: number;
     active: boolean;
+    playing: boolean;
     onPlay: () => void;
     playlists: Playlist[];
     onAdd: (playlistId: string, songId: string) => void;
     userSignedIn: boolean;
 }
 
-const SongRow = ({ song, index, active, onPlay, playlists, onAdd, userSignedIn }: SongRowProps) => {
+const SongRow = ({ song, index, active, playing, onPlay, playlists, onAdd, userSignedIn }: SongRowProps) => {
     return (
         <article className={`song-row ${active ? "active" : ""}`}>
-            <button type="button" className="song-play" onClick={onPlay} aria-label={`Play ${song.title}`}>
-                <Play />
+            <button type="button" className="song-play" onClick={onPlay} aria-label={`${playing ? "Pause" : "Play"} ${song.title}`}>
+                {playing ? <Pause /> : <Play />}
+                <span>{playing ? "Pause" : "Play"}</span>
             </button>
             <Artwork song={song} />
             <div className="song-meta">

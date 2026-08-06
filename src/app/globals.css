@@ -131,21 +131,29 @@
 
 @layer components {
 .music-app {
-  --app-bg: #07100e;
-  --app-surface: #101817;
-  --app-surface-strong: #16211f;
-  --app-text: #f4fbf7;
-  --app-muted: #9fb2aa;
+  --app-bg: #08091f;
+  --app-surface: #111334;
+  --app-surface-strong: #1b1f4d;
+  --app-text: #f6f7ff;
+  --app-muted: #b2b8e8;
   --app-border: rgba(255, 255, 255, 0.1);
-  --app-accent: #31d17d;
-  --app-accent-2: #45b7d1;
+  --app-accent: #8b5cf6;
+  --app-accent-2: #38bdf8;
+  --primary: #8b5cf6;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(255, 255, 255, 0.1);
+  --secondary-foreground: #f6f7ff;
+  --muted: rgba(255, 255, 255, 0.08);
+  --muted-foreground: #b2b8e8;
+  --ring: #38bdf8;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   padding-bottom: 112px;
   background:
-    radial-gradient(circle at 16% 8%, color-mix(in srgb, var(--app-accent) 20%, transparent), transparent 28%),
-    linear-gradient(135deg, var(--app-bg), #101417 58%, #07100e);
+    radial-gradient(circle at 16% 8%, rgba(139, 92, 246, 0.28), transparent 30%),
+    radial-gradient(circle at 86% 14%, rgba(56, 189, 248, 0.2), transparent 24%),
+    linear-gradient(135deg, var(--app-bg), #12113a 58%, #07112f);
   color: var(--app-text);
 }
 
@@ -421,7 +429,7 @@
 
 .song-row {
   display: grid;
-  grid-template-columns: 36px 48px minmax(160px, 1fr) 82px 64px 120px minmax(150px, 180px) 36px;
+  grid-template-columns: 76px 48px minmax(160px, 1fr) 82px 64px 120px minmax(150px, 180px) 36px;
   align-items: center;
   gap: 12px;
   min-height: 72px;
@@ -436,10 +444,10 @@
 }
 
 .song-play,
-.playlist-song-row button {
-  display: grid;
-  place-items: center;
-  width: 32px;
+.playlist-song-row > button:not(.playlist-track-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 32px;
   border: 0;
   border-radius: 8px;
@@ -448,8 +456,18 @@
   cursor: pointer;
 }
 
+.song-play {
+  gap: 6px;
+  width: 76px;
+  padding: 0 10px;
+}
+
+.playlist-song-row > button:not(.playlist-track-button) {
+  width: 32px;
+}
+
 .song-play svg,
-.playlist-song-row svg {
+.playlist-song-row > button:not(.playlist-track-button) svg {
   width: 16px;
   height: 16px;
 }
@@ -549,6 +567,12 @@
   gap: 12px;
 }
 
+.playlist-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .visibility svg {
   width: 14px;
   height: 14px;
@@ -574,6 +598,33 @@
   background: var(--app-surface-strong);
 }
 
+.playlist-track-button {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-track-button svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.playlist-track-button:hover {
+  color: var(--app-accent-2);
+}
+
 .bottom-player {
   position: fixed;
   right: 0;
@@ -589,6 +640,22 @@
   border-top: 1px solid var(--app-border);
   background: color-mix(in srgb, var(--app-surface) 94%, black 6%);
   color: var(--app-text);
+}
+
+.action-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 116px;
+  z-index: 30;
+  max-width: min(360px, calc(100vw - 40px));
+  min-height: 40px;
+  border: 1px solid color-mix(in srgb, var(--app-accent-2) 55%, white 15%);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: color-mix(in srgb, var(--app-surface-strong) 92%, black 8%);
+  color: var(--app-text);
+  cursor: pointer;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.35);
 }
 
 .mini-song {
@@ -652,7 +719,7 @@
   }
 
   .song-row {
-    grid-template-columns: 36px 48px minmax(120px, 1fr) 76px 64px;
+    grid-template-columns: 76px 48px minmax(120px, 1fr) 76px 64px;
   }
 
   .song-row > span:nth-of-type(2),
@@ -700,7 +767,7 @@
   }
 
   .song-row {
-    grid-template-columns: 34px 44px minmax(0, 1fr);
+    grid-template-columns: 76px 44px minmax(0, 1fr);
   }
 
   .song-row > span,

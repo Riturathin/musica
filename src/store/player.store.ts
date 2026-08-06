@@ -2,7 +2,7 @@ import { create } from "zustand";
 import songs from "@/mocks/songs";
 import { Playlist } from "@/types/playlist";
 import { Song, SongMood } from "@/types/song";
-import { clampProgress } from "@/services/audio.service";
+import { audioEngine, clampProgress } from "@/services/audio.service";
 
 type RepeatMode = "off" | "all" | "one";
 type ThemeMode = "midnight" | "light" | "sunset";
@@ -24,9 +24,15 @@ interface PlayerState {
     theme: ThemeMode;
     mood: SongMood | "all";
     lyricsOpen: boolean;
+    actionMessage: string;
+    isLoadingWebSongs: boolean;
+    webSongsError: string;
     user: User | null;
     playlists: Playlist[];
     playSong: (songId: string, queue?: string[]) => void;
+    startWebSongsLoad: () => void;
+    applyWebSongs: (webSongs: Song[]) => void;
+    failWebSongsLoad: (message: string) => void;
     pause: () => void;
     resume: () => void;
     stop: () => void;
@@ -40,6 +46,7 @@ interface PlayerState {
     setTheme: (theme: ThemeMode) => void;
     setMood: (mood: SongMood | "all") => void;
     toggleLyrics: () => void;
+    dismissActionMessage: () => void;
     signIn: () => void;
     signOut: () => void;
     createPlaylist: (name: string, isPublic: boolean) => void;
@@ -114,7 +121,75 @@ const getNextSongId = (state: PlayerState, direction: 1 | -1) => {
     return state.currentSongId;
 };
 
-export const usePlayerStore = create<PlayerState>((set, get) => ({
+const announce = (message: string) => ({ actionMessage: message });
+
+export const usePlayerStore = create<PlayerState>((set, get) => {
+    const playAudio = (song: Song, volume = get().volume) => {
+        audioEngine.play(song, volume, {
+            onDurationChange: (duration) => {
+                if (!Number.isFinite(duration) || duration <= 0) {
+                    return;
+                }
+
+                set((state) => ({
+                    songs: state.songs.map((item) =>
+                        item.id === song.id ? { ...item, duration: Math.round(duration) } : item,
+                    ),
+                }));
+            },
+            onEnded: () => {
+                const state = get();
+                const endedSong = state.songs.find((item) => item.id === state.currentSongId);
+
+                if (!endedSong) {
+                    audioEngine.stop();
+                    set({ isPlaying: false, progress: 0 });
+                    return;
+                }
+
+                if (state.repeat === "one") {
+                    set({ progress: 0, isPlaying: true });
+                    playAudio(endedSong, state.volume);
+                    return;
+                }
+
+                const nextSongId = getNextSongId(state, 1);
+                const reachedEnd = nextSongId === state.currentSongId && state.repeat === "off";
+
+                if (reachedEnd) {
+                    audioEngine.stop();
+                    set({ isPlaying: false, progress: 0, ...announce("Reached end of queue") });
+                    return;
+                }
+
+                const nextSong = state.songs.find((item) => item.id === nextSongId);
+
+                if (!nextSong) {
+                    audioEngine.stop();
+                    set({ isPlaying: false, progress: 0 });
+                    return;
+                }
+
+                set({
+                    currentSongId: nextSong.id,
+                    progress: 0,
+                    isPlaying: true,
+                    ...announce(`Next: ${nextSong.title}`),
+                });
+                playAudio(nextSong, state.volume);
+            },
+            onError: (message) => set(announce(message)),
+            onTimeUpdate: (time) => {
+                const currentSong = get().songs.find((item) => item.id === song.id);
+
+                if (get().currentSongId === song.id) {
+                    set({ progress: clampProgress(time, currentSong?.duration ?? song.duration) });
+                }
+            },
+        });
+    };
+
+    return {
     songs,
     queue: songs.map((song) => song.id),
     currentSongId: songs[0]?.id ?? "",
@@ -126,48 +201,125 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     theme: "midnight",
     mood: "all",
     lyricsOpen: false,
+    actionMessage: "",
+    isLoadingWebSongs: false,
+    webSongsError: "",
     user: demoUser,
     playlists: demoPlaylists,
-    playSong: (songId, queue) =>
+    startWebSongsLoad: () => {
+        set({ isLoadingWebSongs: true, webSongsError: "", ...announce("Loading free songs from Audius") });
+    },
+    applyWebSongs: (webSongs) =>
+        set((state) => {
+            const localSongs = state.songs.filter((song) => !song.id.startsWith("audius-"));
+            const nextSongs = [...webSongs, ...localSongs];
+
+            return {
+                songs: nextSongs,
+                queue: nextSongs.map((song) => song.id),
+                currentSongId: webSongs[0]?.id ?? state.currentSongId,
+                progress: 0,
+                isPlaying: false,
+                isLoadingWebSongs: false,
+                webSongsError: "",
+                ...announce(`Loaded ${webSongs.length} free Audius songs`),
+            };
+        }),
+    failWebSongsLoad: (message) =>
+        set({
+            isLoadingWebSongs: false,
+            webSongsError: message,
+            ...announce("Could not load Audius songs. Using demo tracks."),
+        }),
+    playSong: (songId, queue) => {
+        const song = get().songs.find((item) => item.id === songId);
+
+        if (song) {
+            playAudio(song);
+        }
+
         set({
             currentSongId: songId,
             queue: queue ?? get().queue,
             progress: 0,
             isPlaying: true,
-        }),
-    pause: () => set({ isPlaying: false }),
-    resume: () => set({ isPlaying: true }),
-    stop: () => set({ isPlaying: false, progress: 0 }),
+            ...announce(song ? `Playing ${song.title}` : "Playing selected song"),
+        });
+    },
+    pause: () => {
+        audioEngine.pause();
+        set({ isPlaying: false, ...announce("Paused") });
+    },
+    resume: () => set((state) => {
+        const song = state.songs.find((item) => item.id === state.currentSongId);
+
+        if (song && state.progress === 0) {
+            playAudio(song, state.volume);
+        } else {
+            audioEngine.resume();
+        }
+
+        return {
+            isPlaying: true,
+            ...announce(song ? `Resumed ${song.title}` : "Resumed"),
+        };
+    }),
+    stop: () => {
+        audioEngine.stop();
+        set({ isPlaying: false, progress: 0, ...announce("Stopped playback") });
+    },
     next: () => {
         const state = get();
         const nextSongId = getNextSongId(state, 1);
+        const nextSong = state.songs.find((song) => song.id === nextSongId);
+        const sameSong = nextSongId === state.currentSongId;
+        const shouldPlay = nextSongId !== state.currentSongId || state.repeat === "all";
+
+        if (nextSong && shouldPlay) {
+            playAudio(nextSong, state.volume);
+        }
 
         set({
             currentSongId: nextSongId,
             progress: 0,
-            isPlaying: nextSongId !== state.currentSongId || state.repeat === "all" ? true : state.isPlaying,
+            isPlaying: shouldPlay ? true : state.isPlaying,
+            ...announce(sameSong ? "End of queue" : `Next: ${nextSong?.title ?? "song"}`),
         });
     },
     previous: () => {
         const state = get();
         const previousSongId = getNextSongId(state, -1);
+        const previousSong = state.songs.find((song) => song.id === previousSongId);
+        const sameSong = previousSongId === state.currentSongId;
+        const shouldPlay = !sameSong || state.repeat === "all";
+
+        if (previousSong && shouldPlay) {
+            playAudio(previousSong, state.volume);
+        }
 
         set({
             currentSongId: previousSongId,
             progress: 0,
-            isPlaying: true,
+            isPlaying: shouldPlay ? true : state.isPlaying,
+            ...announce(sameSong ? "Start of queue" : `Previous: ${previousSong?.title ?? "song"}`),
         });
     },
     seek: (value) => {
         const song = get().songs.find((item) => item.id === get().currentSongId);
+        const nextProgress = clampProgress(value, song?.duration ?? 0);
 
-        set({ progress: clampProgress(value, song?.duration ?? 0) });
+        audioEngine.seek(nextProgress);
+        set({ progress: nextProgress, ...announce("Moved playback position") });
     },
     tick: () => {
         const state = get();
         const song = state.songs.find((item) => item.id === state.currentSongId);
 
         if (!state.isPlaying || !song) {
+            return;
+        }
+
+        if (audioEngine.isNativeAudioActive()) {
             return;
         }
 
@@ -179,12 +331,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         }
 
         if (state.repeat === "one") {
+            playAudio(song, state.volume);
             set({ progress: 0, isPlaying: true });
             return;
         }
 
         const nextSongId = getNextSongId(state, 1);
+        const nextSong = state.songs.find((item) => item.id === nextSongId);
         const reachedEnd = nextSongId === state.currentSongId && state.repeat === "off";
+
+        if (nextSong && !reachedEnd) {
+            playAudio(nextSong, state.volume);
+        } else {
+            audioEngine.stop();
+        }
 
         set({
             currentSongId: nextSongId,
@@ -192,25 +352,38 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
             isPlaying: !reachedEnd,
         });
     },
-    setVolume: (volume) => set({ volume }),
-    toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
-    setRepeat: (repeat) => set({ repeat }),
-    setTheme: (theme) => set({ theme }),
+    setVolume: (volume) => {
+        audioEngine.setVolume(volume);
+        set({ volume, ...announce(`Volume ${volume}%`) });
+    },
+    toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle, ...announce(!state.shuffle ? "Shuffle on" : "Shuffle off") })),
+    setRepeat: (repeat) => set({ repeat, ...announce(repeat === "off" ? "Repeat off" : repeat === "all" ? "Repeat all" : "Repeat one") }),
+    setTheme: (theme) =>
+        set({
+            theme,
+            ...announce(theme === "midnight" ? "Purple Blue theme applied" : `${theme[0].toUpperCase()}${theme.slice(1)} theme applied`),
+        }),
     setMood: (mood) => {
         const filteredSongs = mood === "all" ? get().songs : get().songs.filter((song) => song.mood === mood);
+        const currentSongStillVisible = filteredSongs.some((song) => song.id === get().currentSongId);
 
         set({
             mood,
             queue: filteredSongs.map((song) => song.id),
+            currentSongId: currentSongStillVisible ? get().currentSongId : filteredSongs[0]?.id ?? get().currentSongId,
+            progress: currentSongStillVisible ? get().progress : 0,
+            ...announce(mood === "all" ? "Showing all moods" : `Mood changed to ${mood}`),
         });
     },
-    toggleLyrics: () => set((state) => ({ lyricsOpen: !state.lyricsOpen })),
-    signIn: () => set({ user: demoUser }),
-    signOut: () => set({ user: null }),
+    toggleLyrics: () => set((state) => ({ lyricsOpen: !state.lyricsOpen, ...announce(!state.lyricsOpen ? "Lyrics opened" : "Lyrics hidden") })),
+    dismissActionMessage: () => set({ actionMessage: "" }),
+    signIn: () => set({ user: demoUser, ...announce(`Signed in as ${demoUser.name}`) }),
+    signOut: () => set({ user: null, ...announce("Signed out. Private playlists are hidden.") }),
     createPlaylist: (name, isPublic) => {
         const user = get().user;
 
         if (!user || !name.trim()) {
+            set(announce(!user ? "Sign in to create playlists" : "Enter a playlist name"));
             return;
         }
 
@@ -227,6 +400,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
                 },
                 ...state.playlists,
             ],
+            ...announce(`Created ${name.trim()}`),
         }));
     },
     togglePlaylistVisibility: (playlistId) =>
@@ -234,23 +408,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
             playlists: state.playlists.map((playlist) =>
                 playlist.id === playlistId ? { ...playlist, isPublic: !playlist.isPublic } : playlist,
             ),
+            ...announce("Playlist visibility updated"),
         })),
     addSongToPlaylist: (playlistId, songId) =>
         set((state) => ({
             playlists: state.playlists.map((playlist) => {
-                if (playlist.id !== playlistId || playlist.songIds.includes(songId)) {
+                if (playlist.id !== playlistId || playlist.ownerId !== state.user?.id || playlist.songIds.includes(songId)) {
                     return playlist;
                 }
 
                 return { ...playlist, songIds: [...playlist.songIds, songId] };
             }),
+            ...announce("Song added to playlist"),
         })),
     removeSongFromPlaylist: (playlistId, songId) =>
         set((state) => ({
             playlists: state.playlists.map((playlist) =>
-                playlist.id === playlistId
+                playlist.id === playlistId && playlist.ownerId === state.user?.id
                     ? { ...playlist, songIds: playlist.songIds.filter((id) => id !== songId) }
                     : playlist,
             ),
+            ...announce("Song removed from playlist"),
         })),
-}));
+    };
+});
