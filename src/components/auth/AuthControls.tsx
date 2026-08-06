@@ -45,20 +45,20 @@ const AuthControls = () => {
         : isAuthenticated
             ? `Signed in as ${displayName}`
             : providerId === DEV_PROVIDER_ID
-                ? "OIDC not configured. Local demo auth ready."
+                ? ""
                 : providersLoaded
                     ? "OIDC env not configured"
-                : "Browsing as guest";
+                    : "Browsing as guest";
 
     const buttonLabel = isAuthenticated
         ? "Sign out"
         : providerId === OIDC_PROVIDER_ID
             ? "Sign in with OIDC"
             : providerId === DEV_PROVIDER_ID
-                ? "Demo sign in"
+                ? "Sign-in"
                 : providersLoaded
                     ? "Configure OIDC"
-            : "Sign in with OIDC";
+                    : "Sign in with OIDC";
 
     return (
         <div className="auth-panel">

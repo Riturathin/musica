@@ -44,7 +44,7 @@ export const signInWithProvider = (providerId: string) => {
     if (providerId === DEV_PROVIDER_ID) {
         void signIn(DEV_PROVIDER_ID, {
             email: "demo@musica.local",
-            name: "Demo Listener",
+            name: "Ritumoni Sarma",
             redirectTo: "/",
         });
     }

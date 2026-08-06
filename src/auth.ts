@@ -53,7 +53,7 @@ const createDevProvider = () =>
                 : "demo@musica.local";
             const name = typeof credentials.name === "string" && credentials.name.trim()
                 ? credentials.name.trim()
-                : "Demo Listener";
+                : "Ritumoni Sarma";
 
             return {
                 id: `dev-${email.toLowerCase()}`,
