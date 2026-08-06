@@ -14,18 +14,17 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Kno",
-    template: "%s | Kno",
+    default: "Musica",
+    template: "%s | Musica",
   },
-  description: "Remember everything that matters.",
-  applicationName: "Kno",
+  description: "A Spotify-inspired music web app.",
+  applicationName: "Musica",
   keywords: [
-    "notes",
-    "second brain",
-    "knowledge",
-    "memory",
-    "AI",
-    "personal knowledge management",
+    "music",
+    "playlists",
+    "streaming",
+    "songs",
+    "lyrics",
   ],
 };
 

@@ -1,7 +1,9 @@
+import AppLayout from "@/components/layout/AppLayout";
+
 export default function Home() {
   return (
-    <main>
-      Kno
+    <main className="min-h-screen">
+      <AppLayout />
     </main>
   );
 }
