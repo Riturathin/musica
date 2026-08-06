@@ -443,6 +443,58 @@
   flex-wrap: wrap;
 }
 
+.search-control {
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 280px;
+  min-width: min(340px, 100%);
+  min-height: 36px;
+  gap: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0 8px 0 10px;
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+
+.search-control svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--app-muted);
+}
+
+.search-control input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.search-control input::placeholder {
+  color: var(--app-muted);
+}
+
+.search-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--app-surface-strong);
+  color: var(--app-text);
+  cursor: pointer;
+}
+
+.search-control button:hover {
+  background: color-mix(in srgb, var(--app-accent) 22%, var(--app-surface-strong));
+}
+
 .sort-control,
 .sort-direction {
   display: inline-flex;
@@ -529,6 +581,34 @@
   gap: 6px;
 }
 
+.empty-catalog {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 260px;
+  gap: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 28px;
+  background: color-mix(in srgb, var(--app-surface) 92%, transparent);
+  text-align: center;
+}
+
+.empty-catalog svg {
+  width: 26px;
+  height: 26px;
+  color: var(--app-accent-2);
+}
+
+.empty-catalog h3,
+.empty-catalog p {
+  margin: 0;
+}
+
+.empty-catalog p {
+  color: var(--app-muted);
+}
+
 .playlist-grid {
   display: grid;
   gap: 10px;
@@ -536,7 +616,7 @@
 
 .song-row {
   display: grid;
-  grid-template-columns: 38px 38px 48px minmax(0, 1fr) 72px 66px 104px minmax(132px, 156px);
+  grid-template-columns: 38px 38px 48px minmax(0, 1fr) 72px 66px 70px 104px minmax(132px, 156px);
   align-items: center;
   gap: 10px;
   min-height: 72px;
@@ -905,6 +985,24 @@
   .playlist-topline {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .catalog-toolbar,
+  .mood-row {
+    width: 100%;
+  }
+
+  .search-control {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .sort-control {
+    flex: 1 1 180px;
+  }
+
+  .sort-control select {
+    width: 100%;
   }
 
   .hero-panel {
