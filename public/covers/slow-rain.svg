@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d9f4ff"/>
+      <stop offset="0.48" stop-color="#6ea7c8"/>
+      <stop offset="1" stop-color="#19233c"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.82"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.06"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <rect x="86" y="88" width="628" height="624" rx="24" fill="#071326" opacity="0.26"/>
+  <rect x="116" y="118" width="568" height="564" rx="18" fill="url(#glass)" opacity="0.46"/>
+  <g stroke="#f5fbff" stroke-width="10" stroke-linecap="round" opacity="0.7">
+    <path d="M184 164 L128 372"/>
+    <path d="M304 116 L228 502"/>
+    <path d="M436 148 L356 570"/>
+    <path d="M564 118 L480 514"/>
+    <path d="M660 236 L596 642"/>
+  </g>
+  <path d="M116 474 C220 420 294 464 390 426 C506 380 572 434 684 386 L684 682 L116 682 Z" fill="#0b1730" opacity="0.55"/>
+  <text x="70" y="112" fill="#08213e" font-family="Arial, sans-serif" font-size="42" font-weight="700">SLOW</text>
+  <text x="70" y="164" fill="#08213e" font-family="Arial, sans-serif" font-size="42" font-weight="700">RAIN</text>
+  <text x="72" y="726" fill="#eefaff" font-family="Arial, sans-serif" font-size="24" font-weight="700">MIRA VALE</text>
+</svg>

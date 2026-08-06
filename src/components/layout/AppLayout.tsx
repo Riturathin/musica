@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/services/audio.service";
 import { WebMusicService } from "@/services/web-music.service";
 import FreeSongsLoader from "@/components/songs/FreeSongsLoader";
+import SongCover from "@/components/songs/SongCover";
 import { usePlayerStore } from "@/store/player.store";
 import { Playlist } from "@/types/playlist";
 import { Song, SongMood } from "@/types/song";
@@ -40,15 +41,6 @@ const themeOptions = [
     { value: "light", label: "Light" },
     { value: "sunset", label: "Sunset" },
 ] as const;
-
-const artworkClassNames = [
-    "from-emerald-400 via-cyan-500 to-slate-950",
-    "from-sky-200 via-teal-300 to-zinc-800",
-    "from-amber-300 via-rose-400 to-teal-800",
-    "from-stone-200 via-lime-300 to-zinc-900",
-    "from-rose-300 via-red-400 to-slate-900",
-    "from-lime-300 via-emerald-400 to-cyan-900",
-];
 
 const AppLayout = () => {
     const {
@@ -239,7 +231,7 @@ const AppLayout = () => {
 
                 <main className="music-main">
                     <section className="hero-panel">
-                        <Artwork song={currentSong} size="large" />
+                        <SongCover song={currentSong} size="large" />
                         <div className="hero-copy">
                             <p className="eyebrow">{currentSong.mood} mood</p>
                             <h2>{currentSong.title}</h2>
@@ -447,21 +439,6 @@ const AppLayout = () => {
     );
 };
 
-interface ArtworkProps {
-    song: Song;
-    size?: "compact" | "large";
-}
-
-const Artwork = ({ song, size = "compact" }: ArtworkProps) => {
-    const index = [...song.id].reduce((total, character) => total + character.charCodeAt(0), 0);
-
-    return (
-        <div className={`artwork ${size} bg-gradient-to-br ${artworkClassNames[index % artworkClassNames.length]}`}>
-            <Music2 />
-        </div>
-    );
-};
-
 interface SongRowProps {
     song: Song;
     index: number;
@@ -480,7 +457,7 @@ const SongRow = ({ song, index, active, playing, onPlay, playlists, onAdd, userS
                 {playing ? <Pause /> : <Play />}
                 <span>{playing ? "Pause" : "Play"}</span>
             </button>
-            <Artwork song={song} />
+            <SongCover song={song} />
             <div className="song-meta">
                 <h3>{song.title}</h3>
                 <p>{song.artist.name}</p>

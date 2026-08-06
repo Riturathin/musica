@@ -13,6 +13,7 @@ import {
     Volume2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SongCover from "@/components/songs/SongCover";
 import { formatDuration } from "@/services/audio.service";
 import { usePlayerStore } from "@/store/player.store";
 
@@ -41,9 +42,7 @@ const BottomPlayer = () => {
     return (
         <footer className="bottom-player">
             <div className="mini-song">
-                <div className="mini-art">
-                    <Volume2 />
-                </div>
+                <SongCover song={currentSong} className="mini-art" />
                 <div>
                     <h3>{currentSong?.title}</h3>
                     <p>{currentSong?.artist.name}</p>

@@ -13,11 +13,19 @@ interface AudiusTrack {
         id?: string | number;
         name?: string;
         handle?: string;
+        profile_picture?: Artwork;
     };
+    artwork?: Artwork;
 }
 
 interface AudiusTracksResponse {
     data?: AudiusTrack[];
+}
+
+interface Artwork {
+    "150x150"?: string;
+    "480x480"?: string;
+    "1000x1000"?: string;
 }
 
 const moodKeywords: Record<SongMood, string[]> = {
@@ -40,6 +48,10 @@ const inferMood = (track: AudiusTrack): SongMood => {
     return "chill";
 };
 
+const getArtworkUrl = (artwork?: Artwork) => {
+    return artwork?.["1000x1000"] ?? artwork?.["480x480"] ?? artwork?.["150x150"] ?? "";
+};
+
 export const WebMusicService = {
     async getAudiusTrending(limit = 12): Promise<Song[]> {
         const response = await fetch(`/api/music/audius/trending?limit=${limit}`, {
@@ -58,6 +70,7 @@ export const WebMusicService = {
         return (payload.data ?? []).map((track) => {
             const artistName = track.user?.name ?? track.user?.handle ?? "Audius Artist";
             const mood = inferMood(track);
+            const artworkUrl = getArtworkUrl(track.artwork);
 
             return {
                 id: `audius-${track.id}`,
@@ -65,16 +78,16 @@ export const WebMusicService = {
                 artist: {
                     id: String(track.user?.id ?? `artist-${track.id}`),
                     name: artistName,
-                    avatarUrl: "",
+                    avatarUrl: getArtworkUrl(track.user?.profile_picture),
                 },
                 album: {
                     id: `audius-album-${track.id}`,
                     title: track.genre ?? "Audius",
-                    imageUrl: "",
+                    imageUrl: artworkUrl,
                     releaseYear: new Date(track.release_date ?? track.created_at ?? Date.now()).getFullYear(),
                 },
                 duration: track.duration,
-                imageUrl: "",
+                imageUrl: artworkUrl,
                 audioUrl: `/api/audio/audius/${encodeURIComponent(track.id)}`,
                 plays: track.play_count ?? 0,
                 liked: false,

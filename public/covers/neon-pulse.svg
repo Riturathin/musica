@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f2cff"/>
+      <stop offset="0.52" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#00e5ff"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b8fff8" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#b8fff8" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#b8fff8" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="#080a1f"/>
+  <rect width="800" height="800" fill="url(#bg)" opacity="0.82"/>
+  <path d="M0 572 C148 498 250 616 400 538 C548 462 664 568 800 500 L800 800 L0 800 Z" fill="#050816" opacity="0.72"/>
+  <path d="M0 244 L800 96 L800 196 L0 350 Z" fill="url(#beam)" opacity="0.58"/>
+  <path d="M0 398 L800 256 L800 318 L0 472 Z" fill="url(#beam)" opacity="0.36"/>
+  <g fill="none" stroke="#e9fcff" stroke-linecap="round">
+    <path d="M138 446 H232 L268 350 L340 548 L396 266 L462 446 H664" stroke-width="18" opacity="0.9"/>
+    <path d="M138 446 H232 L268 350 L340 548 L396 266 L462 446 H664" stroke="#43f4ff" stroke-width="40" opacity="0.16"/>
+  </g>
+  <text x="70" y="104" fill="#ffffff" font-family="Arial, sans-serif" font-size="44" font-weight="700">NEON</text>
+  <text x="70" y="158" fill="#ffffff" font-family="Arial, sans-serif" font-size="44" font-weight="700">PULSE</text>
+  <text x="72" y="716" fill="#b8fff8" font-family="Arial, sans-serif" font-size="24" font-weight="700">THE AFTERHOURS</text>
+</svg>

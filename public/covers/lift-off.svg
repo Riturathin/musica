@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#06111e"/>
+      <stop offset="0.48" stop-color="#2452ff"/>
+      <stop offset="1" stop-color="#a7ff5f"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.48" stop-color="#a7ff5f"/>
+      <stop offset="1" stop-color="#14f1ff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <path d="M396 124 C470 218 500 322 486 438 L400 520 L314 438 C300 322 326 218 396 124 Z" fill="#f9fbff"/>
+  <path d="M400 212 C436 256 450 314 446 380 L400 426 L354 380 C350 314 364 256 400 212 Z" fill="#1235a8"/>
+  <path d="M334 442 L238 556 L340 530 Z" fill="#dce8ff"/>
+  <path d="M466 442 L562 556 L460 530 Z" fill="#dce8ff"/>
+  <path d="M356 522 C374 606 392 674 400 744 C408 674 426 606 444 522 Z" fill="url(#flame)" opacity="0.9"/>
+  <g stroke="#d9fff2" stroke-width="8" stroke-linecap="round" opacity="0.55">
+    <path d="M140 254 H244"/>
+    <path d="M568 210 H690"/>
+    <path d="M112 438 H230"/>
+    <path d="M576 492 H708"/>
+  </g>
+  <text x="70" y="112" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="700">LIFT</text>
+  <text x="70" y="164" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="700">OFF</text>
+  <text x="72" y="724" fill="#e4ffe7" font-family="Arial, sans-serif" font-size="24" font-weight="700">PULSE ATLAS</text>
+</svg>
