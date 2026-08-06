@@ -7,7 +7,7 @@ import { audioEngine, clampProgress } from "@/services/audio.service";
 type RepeatMode = "off" | "all" | "one";
 type ThemeMode = "midnight" | "light" | "sunset";
 
-interface User {
+export interface User {
     id: string;
     name: string;
 }
@@ -47,8 +47,7 @@ interface PlayerState {
     setMood: (mood: SongMood | "all") => void;
     toggleLyrics: () => void;
     dismissActionMessage: () => void;
-    signIn: () => void;
-    signOut: () => void;
+    setAuthenticatedUser: (user: User | null) => void;
     createPlaylist: (name: string, isPublic: boolean) => void;
     togglePlaylistVisibility: (playlistId: string) => void;
     addSongToPlaylist: (playlistId: string, songId: string) => void;
@@ -93,11 +92,6 @@ const demoPlaylists: Playlist[] = [
         createdAt: "2026-08-04T10:00:00.000Z",
     },
 ];
-
-const demoUser = {
-    id: "demo-user",
-    name: "Ritu",
-};
 
 const getNextSongId = (state: PlayerState, direction: 1 | -1) => {
     const queue = state.queue.length ? state.queue : state.songs.map((song) => song.id);
@@ -204,7 +198,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     actionMessage: "",
     isLoadingWebSongs: false,
     webSongsError: "",
-    user: demoUser,
+    user: null,
     playlists: demoPlaylists,
     startWebSongsLoad: () => {
         set({ isLoadingWebSongs: true, webSongsError: "", ...announce("Loading free songs from Audius") });
@@ -377,8 +371,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     },
     toggleLyrics: () => set((state) => ({ lyricsOpen: !state.lyricsOpen, ...announce(!state.lyricsOpen ? "Lyrics opened" : "Lyrics hidden") })),
     dismissActionMessage: () => set({ actionMessage: "" }),
-    signIn: () => set({ user: demoUser, ...announce(`Signed in as ${demoUser.name}`) }),
-    signOut: () => set({ user: null, ...announce("Signed out. Private playlists are hidden.") }),
+    setAuthenticatedUser: (user) =>
+        set((state) => {
+            if (!user && !state.user) {
+                return { user: null };
+            }
+
+            if (user && state.user?.id === user.id && state.user.name === user.name) {
+                return { user };
+            }
+
+            return {
+                user,
+                ...announce(user ? `Signed in as ${user.name}` : "Signed out. Private playlists are hidden."),
+            };
+        }),
     createPlaylist: (name, isPublic) => {
         const user = get().user;
 
@@ -404,12 +411,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
         }));
     },
     togglePlaylistVisibility: (playlistId) =>
-        set((state) => ({
-            playlists: state.playlists.map((playlist) =>
-                playlist.id === playlistId ? { ...playlist, isPublic: !playlist.isPublic } : playlist,
-            ),
-            ...announce("Playlist visibility updated"),
-        })),
+        set((state) => {
+            const playlist = state.playlists.find((item) => item.id === playlistId);
+
+            if (!playlist || playlist.ownerId !== state.user?.id) {
+                return announce("Only the playlist owner can change visibility");
+            }
+
+            return {
+                playlists: state.playlists.map((item) =>
+                    item.id === playlistId ? { ...item, isPublic: !item.isPublic } : item,
+                ),
+                ...announce("Playlist visibility updated"),
+            };
+        }),
     addSongToPlaylist: (playlistId, songId) =>
         set((state) => ({
             playlists: state.playlists.map((playlist) => {

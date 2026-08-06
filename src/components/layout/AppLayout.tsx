@@ -6,8 +6,6 @@ import {
     EyeOff,
     ListMusic,
     Lock,
-    LogIn,
-    LogOut,
     Music2,
     Palette,
     Pause,
@@ -18,6 +16,7 @@ import {
     Trash2,
     User,
 } from "lucide-react";
+import AuthControls from "@/components/auth/AuthControls";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/services/audio.service";
 import { WebMusicService } from "@/services/web-music.service";
@@ -76,8 +75,6 @@ const AppLayout = () => {
         setMood,
         toggleLyrics,
         dismissActionMessage,
-        signIn,
-        signOut,
         createPlaylist,
         togglePlaylistVisibility,
         addSongToPlaylist,
@@ -209,13 +206,7 @@ const AppLayout = () => {
                         <User />
                         Account
                     </div>
-                    <div className="auth-panel">
-                        <p>{user ? `Signed in as ${user.name}` : "Browsing as guest"}</p>
-                        <Button type="button" variant="secondary" onClick={user ? signOut : signIn}>
-                            {user ? <LogOut /> : <LogIn />}
-                            {user ? "Sign out" : "Sign in"}
-                        </Button>
-                    </div>
+                    <AuthControls />
                 </section>
 
                 <section className="side-section">
